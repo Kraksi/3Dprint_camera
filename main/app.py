@@ -16,6 +16,7 @@ import asyncio
 
 app = FastAPI(debug=True)
 templates = Jinja2Templates(directory="templates")
+rtsp_url = 'rtsp://krasti:anuBIS0431!@192.168.1.89:554/stream1'
 
 # Глобальные переменные для статуса и времени печати
 printing_status = "Ожидание начала печати"
@@ -27,7 +28,7 @@ last_frame = None
 # Обработчик ошибок печати
 printing_error = False
 error_message = ""
-videostream = VideoStreamSingleton(0)
+videostream = VideoStreamSingleton(rtsp_url)
 
 # Функция для получения сессии базы данных
 async def get_db():

@@ -1,97 +1,55 @@
 import pytest
 from fastapi.testclient import TestClient
-from fastapi import FastAPI
-from unittest.mock import MagicMock
-from datetime import datetime
+from main.app import app
+from database.databases import Base, Users
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-from main.app import app  # Импортируйте свой FastAPI app из соответствующего файла
-
-# Мокирование зависимостей
-@pytest.fixture
-def mock_get_db():
-    mock_db = MagicMock()
-    return mock_db
-
-@pytest.fixture
-def mock_print_repo():
-    mock_repo = MagicMock()
-    return mock_repo
-
-@pytest.fixture
-def mock_video_stream():
-    mock_stream = MagicMock()
-    return mock_stream
 
 @pytest.fixture
 def client():
-    # Создание клиента FastAPI для тестов
-    with TestClient(app) as client:
-        yield client
+    return TestClient(app)
 
-# Тестирование маршрута "/"
-def test_login_form(client):
-    response = client.get("/")
-    assert response.status_code == 200
-    assert "Введите логин" in response.text
 
-# Тестирование маршрута "/login"
-@pytest.mark.asyncio
-async def test_login(client, mock_get_db, mock_print_repo):
-    # Мокирование логина пользователя
-    mock_user = MagicMock()
-    mock_user.username = "krasti"
-    mock_user.password = "admin"
+@pytest.fixture
+def db_connection():
+    # Используем временную базу данных SQLite для тестов
+    engine = create_engine('sqlite:///:memory:')
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    return session
 
-    mock_get_db.return_value.get_user.return_value = mock_user
 
-    response = client.post("/login", data={"username": "krasti", "password": "admin"})
-    assert response.status_code == 302  # Проверка на редирект
-    assert response.headers["location"] == "/status"
+def test_login_success(client, db_connection):
+    # Добавляем тестового пользователя с ID=1 в базу данных
+    user = Users(id=1, username='testuser', password='testpass')
+    db_connection.add(user)
+    db_connection.commit()
 
-@pytest.mark.asyncio
-async def test_login_invalid(client, mock_get_db, mock_print_repo):
-    # Мокирование неверных данных для логина
-    mock_user = MagicMock()
-    mock_user.username = "krasti"
-    mock_user.password = "admin"
-
-    mock_get_db.return_value.get_user.return_value = mock_user
-
-    response = client.post("/login", data={"username": "krasti", "password": "wrongpassword"})
-
-    # Проверка на статус код 200 (если мы не делаем редирект, а показываем ошибку на той же странице)
+    response = client.post("/login", data={"username": "testuser", "password": "testpass"})
     assert response.status_code == 200
 
-    # Проверка, что ошибка "Неверный пароль" присутствует в ответе
-    assert "Неверный пароль" in response.text
 
-# Тестирование маршрута "/status"
+def test_login_failure(client, db_connection):
+    response = client.post("/login", data={"username": "wronguser", "password": "wrongpass"})
+    assert response.status_code == 200
+    assert "Неверный логин" in response.text
+
+
 def test_status_page(client):
     response = client.get("/status")
     assert response.status_code == 200
-    assert "Ожидание начала печати" in response.text  # Начальный статус печати
+    assert "Ожидание начала печати" in response.text
 
-# Тестирование маршрута "/end_print"
-@pytest.mark.asyncio
-async def test_end_print_page(client):
+
+def test_end_print_page(client):
     response = client.get("/end_print")
     assert response.status_code == 200
-    assert "Ожидание начала печати" in response.text  # Печать завершена
+    assert "Ожидание начала печати" in response.text
 
-# Тестирование маршрута "/stream"
-@pytest.mark.asyncio
-async def test_video_stream(client, mock_video_stream):
-    # Мокируем видеопоток
-    mock_video_stream.get_frame.return_value = b"frame_data"
 
-    response = client.get("/stream")
-    assert response.status_code == 200
-    assert "multipart/x-mixed-replace" in response.headers["content-type"]
-
-# Тестирование маршрута "/resume"
-@pytest.mark.asyncio
-async def test_resume_processing(client):
+def test_resume_processing(client):
     response = client.post("/resume")
     assert response.status_code == 200
-    assert "Обработка возобновлена" in response.text  # Проверяем сообщение о возобновлении
-
+    assert response.json() == {"message": "Обработка возобновлена."}

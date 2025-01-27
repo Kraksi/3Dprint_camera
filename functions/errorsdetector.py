@@ -1,7 +1,6 @@
 from observer.observer import Subject
 import cv2
 import numpy as np
-import asyncio
 
 
 class FindError(Subject):
@@ -12,19 +11,18 @@ class FindError(Subject):
         self.error_threshold = error_threshold  # Порог ошибки для остановки
         self.paused = False  # Флаг приостановки обработки
 
-    async def calculate_quality_coefficient(self, reference_image, printed_image):
-
+    def calculate_quality_coefficient(self, reference_image, printed_image):
         # Если обработка приостановлена, возвращаем нулевой коэффициент
         if self.paused:
             return 0.0
 
-        keypoints1, descriptors1 = await asyncio.to_thread(self.sift.detectAndCompute, reference_image, None)
-        keypoints2, descriptors2 = await asyncio.to_thread(self.sift.detectAndCompute, printed_image, None)
+        keypoints1, descriptors1 = self.sift.detectAndCompute(reference_image, None)
+        keypoints2, descriptors2 = self.sift.detectAndCompute(printed_image, None)
 
         if descriptors1 is None or descriptors2 is None:
             return 0.0
 
-        matches = await asyncio.to_thread(self.bf.knnMatch, descriptors1, descriptors2, k=2)
+        matches = self.bf.knnMatch(descriptors1, descriptors2, k=2)
 
         good_matches = []
         for m, n in matches:
@@ -32,11 +30,11 @@ class FindError(Subject):
                 if m.distance < 0.75 * n.distance:
                     good_matches.append(m)
             else:
-                raise ValueError("Недостаточно совпадлений")
+                raise ValueError("Недостаточно совпадений")
 
         match_ratio = len(good_matches) / len(keypoints1) if len(keypoints1) > 0 else 0
 
-        error_ratio = await self.detect_print_errors(printed_image)
+        error_ratio = self.detect_print_errors(printed_image)
 
         if error_ratio < self.error_threshold:
             self.paused = True
@@ -46,16 +44,15 @@ class FindError(Subject):
 
         return quality_coefficient
 
-    async def detect_print_errors(self, image):
-
-        gray = await asyncio.to_thread(cv2.cvtColor, image, cv2.COLOR_BGR2GRAY)
-        _, binary = await asyncio.to_thread(cv2.threshold, gray, 200, 255, cv2.THRESH_BINARY)
+    def detect_print_errors(self, image):
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        _, binary = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
 
         kernel = np.ones((5, 5), np.uint8)
-        binary = await asyncio.to_thread(cv2.morphologyEx, binary, cv2.MORPH_OPEN, kernel)
-        binary = await asyncio.to_thread(cv2.morphologyEx, binary, cv2.MORPH_CLOSE, kernel)
+        binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+        binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
 
-        contours, _ = await asyncio.to_thread(cv2.findContours, binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         error_area = sum(cv2.contourArea(contour) for contour in contours)
         total_area = image.shape[0] * image.shape[1]

@@ -45,9 +45,9 @@ class TimerDetectorDecorator(DetectorDecorator):
         self.motion_cooldown = motion_cooldown  # Время "охлаждения" перед завершением движения
         self.last_motion_time = None  # Время последнего обнаруженного движения
 
-    async def process_frame(self, frame):
+    def process_frame(self, frame):
         # Обработка кадра базовым детектором
-        result = await self._detector.process_frame(frame)
+        result = self._detector.process_frame(frame)
         processed_frame, motion_detected = result
 
         current_time = datetime.now()
@@ -71,7 +71,7 @@ class TimerDetectorDecorator(DetectorDecorator):
                     self.last_motion_time = None
 
                     if self.on_motion_end:
-                        await self.on_motion_end(
+                        self.on_motion_end(
                             self.total_motion_time,
                             self.last_frame if self.last_frame is not None else frame
                         )
@@ -98,23 +98,23 @@ class PrintErrorDetector(DetectorDecorator):
     def __init__(self, detector: Subject, error_detector: FindError, quality_threshold: float = 0.01):
         super().__init__(detector)
         self.print_start_time = datetime.now()
-        self.error_occurred = False # Флаг ошибки
-        self.last_frame = None # Последний фрейм с фиксацией ошибки
+        self.error_occurred = False  # Флаг ошибки
+        self.last_frame = None  # Последний фрейм с фиксацией ошибки
         self.on_error_handler = None  # Обработчик для ошибок печати
         self.error_detector = error_detector  # Объект для поиска ошибок
         self.quality_threshold = quality_threshold  # Порог для определения ошибки
 
-    async def process_frame(self, frame):
+    def process_frame(self, frame):
         try:
             # Обработка кадра основным детектором
-            result = await self._detector.process_frame(frame)
+            result = self._detector.process_frame(frame)
             processed_frame, motion_detected = result
 
             self.last_frame = frame
 
             # Вычисление коэффициента качества для текущего кадра
             reference_image = self.get_reference_image()
-            quality_coefficient = await self.error_detector.calculate_quality_coefficient(reference_image, frame)
+            quality_coefficient = self.error_detector.calculate_quality_coefficient(reference_image, frame)
 
             # Проверка на ошибку печати
             if quality_coefficient < self.quality_threshold:
@@ -126,8 +126,8 @@ class PrintErrorDetector(DetectorDecorator):
 
                 # Передача в хендлер для записи в базу
                 if self.on_error_handler:
-                    await self.on_error_handler(elapsed_time, self.last_frame,
-                                                f"Ошибка печати.\nКоэфициент схожести = {quality_coefficient:.2f}")
+                    self.on_error_handler(elapsed_time, self.last_frame,
+                                           f"Ошибка печати.\nКоэфициент схожести = {quality_coefficient:.2f}")
 
             return processed_frame, motion_detected
 
@@ -135,7 +135,7 @@ class PrintErrorDetector(DetectorDecorator):
             self.error_occurred = True
             elapsed_time = (datetime.now() - self.print_start_time).total_seconds()
             if self.on_error_handler:
-                await self.on_error_handler(elapsed_time, self.last_frame, str(e))
+                self.on_error_handler(elapsed_time, self.last_frame, str(e))
             raise e
 
     # Хендлер обрабатывающий ошибку

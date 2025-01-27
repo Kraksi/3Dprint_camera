@@ -1,6 +1,5 @@
 import cv2
 import time
-import asyncio
 from observer.observer import Subject
 
 class MotionDetector(Subject):
@@ -14,7 +13,7 @@ class MotionDetector(Subject):
         self.last_motion_time = None  # Время последнего обнаруженного движения
         self.motion_active = False  # Флаг, указывающий, активно ли движение
 
-    async def process_frame(self, frame):
+    def process_frame(self, frame):
         # Преобразуем кадр в оттенки серого
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 

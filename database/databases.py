@@ -1,10 +1,8 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy import create_engine, Column, Integer, String, Text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import Column, Integer, String, Text
 from validation.all_classes import UserCreateSchema, UserUpdateSchema
 from sqlalchemy.sql import text
-import asyncio
 
 # Базовый класс для моделей
 Base = declarative_base()
@@ -26,20 +24,21 @@ class DatabaseConnection:
 
     def __init__(self, username, password, host, database):
         if not self._initialized:
-            self.database_url = f"mysql+asyncmy://{username}:{password}@{host}/{database}"
-            self.engine = create_async_engine(self.database_url, echo=True)
-            self.SessionFactory = sessionmaker(bind=self.engine, class_=AsyncSession, expire_on_commit=False)
+            # Изменена строка подключения для использования pymysql
+            self.database_url = f"mysql+pymysql://{username}:{password}@{host}/{database}"
+            self.engine = create_engine(self.database_url, echo=True)
+            self.SessionFactory = sessionmaker(bind=self.engine, expire_on_commit=False)
             self._initialized = True
 
-    async def get_session(self):
+    def get_session(self):
         return self.SessionFactory()
 
-    async def close_session(self):
-        await self.engine.dispose()
+    def close_session(self):
+        self.engine.dispose()
 
-    async def create_tables(self):
-        async with self.engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+    def create_tables(self):
+        with self.engine.begin() as conn:
+            Base.metadata.create_all(conn)
 
 
 # Создание таблицы пользователей
@@ -76,66 +75,65 @@ class UserRepository:
     def __init__(self, session):
         self.session = session
 
-    async def add_user(self, user_data: UserCreateSchema):
+    def add_user(self, user_data: UserCreateSchema):
         try:
             new_user = Users(username=user_data.username, password=user_data.password)
             self.session.add(new_user)
-            await self.session.commit()
+            self.session.commit()
         except SQLAlchemyError as e:
-            await self.session.rollback()
+            self.session.rollback()
             print(f"Ошибка добавления пользователя: {e}")
 
-    async def get_user(self, user_id):
+    def get_user(self, user_id):
         query = text("SELECT * FROM users WHERE id = :id")
-        result = await self.session.execute(query, {"id": user_id})
+        result = self.session.execute(query, {"id": user_id})
         return result.fetchone()
 
-    async def update_user(self, user_id, user_data: UserUpdateSchema):
-        user = await self.get_user(user_id)
+    def update_user(self, user_id, user_data: UserUpdateSchema):
+        user = self.get_user(user_id)
         if user:
             if user_data.username:
                 user.username = user_data.username
             if user_data.password:
                 user.password = user_data.password
-            await self.session.commit()
+            self.session.commit()
 
-    async def delete_user(self, user_id):
-        user = await self.get_user(user_id)
+    def delete_user(self, user_id):
+        user = self.get_user(user_id)
         if user:
-            await self.session.delete(user)
-            await self.session.commit()
+            self.session.delete(user)
+            self.session.commit()
 
 
 class PrintInfoRepository:
     def __init__(self, session):
         self.session = session
 
-    async def add_print_info(self, print_time, status, image=None):
+    def add_print_info(self, print_time, status, image=None):
         try:
             new_print_info = PrintInfo(print_time=print_time, status=status, image=image)
             self.session.add(new_print_info)
-            await self.session.commit()
+            self.session.commit()
         except SQLAlchemyError as e:
-            await self.session.rollback()
+            self.session.rollback()
             print(f"Ошибка добавления информации о печати: {e}")
 
-    async def get_print_info(self, print_time_id):
-
-        query = text("SELECT * FROM users WHERE id = :id")
-        result = await self.session.execute(query, {"id": print_time_id})
+    def get_print_info(self, print_time_id):
+        query = text("SELECT * FROM print_info WHERE id = :id")
+        result = self.session.execute(query, {"id": print_time_id})
         return result.fetchone()
 
-    async def update_print_info(self, print_time_id, status=None, image=None):
-        print_info = await self.get_print_info(print_time_id)
+    def update_print_info(self, print_time_id, status=None, image=None):
+        print_info = self.get_print_info(print_time_id)
         if print_info:
             if status:
                 print_info.status = status
             if image:
                 print_info.image = image
-            await self.session.commit()
+            self.session.commit()
 
-    async def delete_print_info(self, print_time_id):
-        print_info = await self.get_print_info(print_time_id)
+    def delete_print_info(self, print_time_id):
+        print_info = self.get_print_info(print_time_id)
         if print_info:
-            await self.session.delete(print_info)
-            await self.session.commit()
+            self.session.delete(print_info)
+            self.session.commit()

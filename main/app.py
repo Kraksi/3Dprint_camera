@@ -32,7 +32,7 @@ videostream = VideoStreamSingleton(0)
 # Функция для получения сессии базы данных
 async def get_db():
     db = DatabaseConnection(
-        username='Krasti',
+        username='krasti',
         password='Admin20)$1998',
         host='193.233.48.188',
         database='3dprint_base'

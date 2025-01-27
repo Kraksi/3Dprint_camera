@@ -4,6 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Printing Status</title>
+    <script>
+    function checkPrintStatus() {
+        fetch('/print_status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "Печать завершена успешно") {
+                    window.location.href = "/end_print";
+                } else if (data.error) {
+                    window.location.href = "/end_print";
+                }
+            });
+    }
+    setInterval(checkPrintStatus, 3000);
+    </script>
     <style>
         body {
             font-family: Arial, sans-serif;

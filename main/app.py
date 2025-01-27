@@ -5,7 +5,7 @@ from database.databases import DatabaseConnection, UserRepository, PrintInfoRepo
 from validation.all_classes import LoginRequest
 from functions.motiondetector import MotionDetector
 from functions.errorsdetector import FindError
-from connectors.videoconnect import VideoStreamSingleton
+from connectors.videoconnect import VideoStream
 from observer.notifier import ConsoleNotifier
 import cv2
 from decorators.decorators import TimerDetectorDecorator, PrintErrorDetector
@@ -14,7 +14,6 @@ from datetime import datetime
 
 app = FastAPI(debug=True)
 templates = Jinja2Templates(directory="templates")
-#rtsp_url = 'rtsp://krasti:anuBIS0431!@192.168.1.89:554/stream1'
 
 # Глобальные переменные для статуса и времени печати
 printing_status = "Ожидание начала печати"
@@ -26,7 +25,13 @@ last_frame = None
 # Обработчик ошибок печати
 printing_error = False
 error_message = ""
-videostream = VideoStreamSingleton(0)
+
+
+def get_videostream():
+    return VideoStream(0)
+
+
+videostream = get_videostream()
 
 
 def get_db():
@@ -61,20 +66,15 @@ def login_form(request: Request):
 def login(request: Request, username: str = Form(...), password: str = Form(...)):
     user_repo = get_user_repo()
     login_data = LoginRequest(username=username, password=password)
-    user = user_repo.get_user(1)
+    users = user_repo.get_all_users()
+    for user in users:
+        if user.username == login_data.username and user.password == login_data.password:
+            return RedirectResponse(url="/status", status_code=303)
 
-    if user.username != login_data.username:
-        return templates.TemplateResponse(request, "login.html", {
-            "request": request,
-            "message": "Неверный логин"
-        })
-    elif user.password != login_data.password:
-        return templates.TemplateResponse(request, "login.html", {
-            "request": request,
-            "message": "Неверный пароль"
-        })
-
-    return RedirectResponse(url="/status", status_code=303)
+    return templates.TemplateResponse(request, "login.html", {
+        "request": request,
+        "message": "Неверный логин или пароль"
+    })
 
 
 @app.get("/status", response_class=HTMLResponse)
@@ -103,7 +103,7 @@ def end_print_page(request: Request):
 
 @app.get("/stream", response_class=StreamingResponse)
 def video_stream():
-    global printing_status, motion_start_time, total_time, printing_error, error_message, streaming_active, last_frame
+    global printing_status, motion_start_time, total_time, printing_error, error_message, streaming_active, last_frame, videostream
 
     detector = MotionDetector()
     find_error_detector = FindError(error_threshold=0)
@@ -114,6 +114,8 @@ def video_stream():
     console_notifier = ConsoleNotifier()
     motion_timer_decorator.attach(console_notifier)
 
+    redirect_url = {"url": None}
+
     # Установка обработчиков событий
     def motion_end_handler(total_motion_time, last_frame):
         global printing_status, total_time, streaming_active
@@ -123,7 +125,7 @@ def video_stream():
         printing_status = "Печать завершена успешно"
         total_time = total_motion_time
         streaming_active = False  # Останавливаем стриминг
-        return RedirectResponse(url="/end_print")
+#        return RedirectResponse(url="/end_print")
 
     def print_error_handler(elapsed_time, last_frame, error_message):
         global printing_status, printing_error, total_time, streaming_active
@@ -134,52 +136,56 @@ def video_stream():
         printing_error = True
         total_time = elapsed_time
         streaming_active = False  # Останавливаем стриминг
-        return RedirectResponse(url="/end_print")
+#        return RedirectResponse(url="/end_print")
 
     motion_timer_decorator.set_motion_end_handler(motion_end_handler)
     print_error_detector.set_error_handler(print_error_handler)
 
     def frame_generator():
-        global motion_start_time, printing_status, total_time, streaming_active, last_frame
+        global motion_start_time, printing_status, total_time, streaming_active, last_frame, videostream
         print_repo = get_print_repo()
         try:
             while streaming_active:
-                frame = videostream.get_frame()
-                if frame is None:
-                    print("Ошибка: кадр не получен.")
+                try:
+                    frame = videostream.get_frame()
+                    if frame is None:
+                        print("Ошибка: кадр не получен.")
+                        break
+
+                    print("Кадр получен успешно.")  # Отладочное сообщение
+
+                    # Обработка кадра
+                    result = print_error_detector.process_frame(frame)
+                    processed_frame, motion_detected = result
+
+                    # Обновление статуса и времени
+                    if motion_detected and printing_status != "Идет печать":
+                        motion_start_time = datetime.now()
+                        printing_status = "Идет печать"
+
+                    if motion_start_time is not None:
+                        total_time = (datetime.now() - motion_start_time).total_seconds()
+                    else:
+                        total_time = 0
+
+                    # Сжатие кадра в JPEG
+                    ret, buffer = cv2.imencode('.jpg', processed_frame)
+                    if not ret:
+                        print("Ошибка: не удалось сжать кадр в JPEG.")
+                        continue
+                    frame_bytes = buffer.tobytes()
+
+                    yield (b'--frame\r\n'
+                           b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+
+                    last_frame = frame
+
+                except ValueError as e:
+                    print(f"Ошибка при получении кадра: {e}")
                     break
-
-                print("Кадр получен успешно.")  # Отладочное сообщение
-
-                # Обработка кадра
-                result = print_error_detector.process_frame(frame)
-                processed_frame, motion_detected = result
-
-                # Обновление статуса и времени
-                if motion_detected and printing_status != "Printing in progress":
-                    motion_start_time = datetime.now()
-                    printing_status = "Printing in progress"
-
-                if motion_start_time is not None:
-                    total_time = (datetime.now() - motion_start_time).total_seconds()
-                else:
-                    total_time = 0
-
-                # Сжатие кадра в JPEG
-                ret, buffer = cv2.imencode('.jpg', processed_frame)
-                if not ret:
-                    print("Ошибка: не удалось сжать кадр в JPEG.")
-                    continue
-                frame_bytes = buffer.tobytes()
-
-                yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-
-                last_frame = frame
-
-                # Задержка (не асинхронная)
-                import time
-                time.sleep(0.1)
+                except Exception as e:
+                    print(f"Неожиданная ошибка при обработке кадра: {e}")
+                    break
 
         except Exception as e:
             print(f"Ошибка во время обработки видео: {e}")
@@ -195,8 +201,18 @@ def video_stream():
 
 @app.post("/resume")
 def resume_processing():
-    global streaming_active, printing_error, error_message
+    global streaming_active, printing_error, error_message, videostream
     streaming_active = True
     printing_error = False
     error_message = ""
+    videostream = get_videostream()
     return JSONResponse(content={"message": "Обработка возобновлена."})
+
+
+@app.get("/print_status")
+def get_print_status():
+    global printing_status, printing_error
+    return JSONResponse(content={
+        "status": printing_status,
+        "error": printing_error
+    })

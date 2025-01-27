@@ -1,6 +1,7 @@
 import cv2
 import base64
 
+
 def handle_motion_end(total_motion_time, last_frame, print_repo):
     if last_frame is None:
         print("Ошибка: last_frame пустой или None.")
@@ -14,10 +15,15 @@ def handle_motion_end(total_motion_time, last_frame, print_repo):
         return
 
     try:
-        print_repo.add_print_info(print_time=total_motion_time, status="Модель напечатана без ошибок", image=binary_frame)
+        print_repo.add_print_info(
+            print_time=total_motion_time,
+            status="Модель напечатана без ошибок",
+            image=binary_frame
+        )
         print("Данные о печати записаны в базу.")
     except Exception as e:
         print(f"Ошибка записи данных в базу: {e}")
+
 
 def handle_print_error(elapsed_time, last_frame, error_message, print_info_repo):
     """

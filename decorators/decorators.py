@@ -117,7 +117,7 @@ class PrintErrorDetector(DetectorDecorator):
             quality_coefficient = self.error_detector.calculate_quality_coefficient(reference_image, frame)
 
             # Проверка на ошибку печати
-            if quality_coefficient < self.quality_threshold:
+            if quality_coefficient <= self.quality_threshold:
                 self.error_occurred = True
                 if self.print_start_time is not None:
                     elapsed_time = (datetime.now() - self.print_start_time).total_seconds()

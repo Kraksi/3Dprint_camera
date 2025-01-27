@@ -2,6 +2,7 @@ import cv2
 import time
 from observer.observer import Subject
 
+
 class MotionDetector(Subject):
     def __init__(self, min_area=1000, min_motion_duration=5.0, motion_cooldown=10.0):
         super().__init__()

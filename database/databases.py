@@ -89,6 +89,11 @@ class UserRepository:
         result = self.session.execute(query, {"id": user_id})
         return result.fetchone()
 
+    def get_all_users(self):
+        query = text("SELECT * FROM users")
+        result = self.session.execute(query)
+        return result.fetchall()
+
     def update_user(self, user_id, user_data: UserUpdateSchema):
         user = self.get_user(user_id)
         if user:

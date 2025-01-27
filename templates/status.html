@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Printing Status</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            width: 900px;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .video-frame {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        iframe {
+            width: 100%;
+            height: 450px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        .status, .timer {
+            text-align: center;
+            font-size: 18px;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .status {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .timer {
+            background-color: #cce5ff;
+            color: #004085;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>3D Printing Monitoring</h1>
+        <div class="video-frame">
+            <!-- Видеопоток -->
+            <iframe src="/stream" frameborder="0"></iframe>
+        </div>
+        <div class="status">
+            <p><strong>Статус:</strong> {{ status }}</p>
+        </div>
+        <div class="timer">
+            <p><strong>Время печати:</strong> {{ elapsed_time }} секунд</p>
+        </div>
+    </div>
+</body>
+</html>

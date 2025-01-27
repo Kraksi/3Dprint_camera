@@ -6,8 +6,8 @@ import numpy as np
 class FindError(Subject):
     def __init__(self, error_threshold=0.1):
         super().__init__()
-        self.sift = cv2.SIFT_create()  # Инициализация SIFT
-        self.bf = cv2.BFMatcher()  # Инициализация BFMatcher
+        self.sift = cv2.SIFT_create()
+        self.bf = cv2.BFMatcher()
         self.error_threshold = error_threshold  # Порог ошибки для остановки
         self.paused = False  # Флаг приостановки обработки
 

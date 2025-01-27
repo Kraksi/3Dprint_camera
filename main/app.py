@@ -114,8 +114,6 @@ def video_stream():
     console_notifier = ConsoleNotifier()
     motion_timer_decorator.attach(console_notifier)
 
-    redirect_url = {"url": None}
-
     # Установка обработчиков событий
     def motion_end_handler(total_motion_time, last_frame):
         global printing_status, total_time, streaming_active
@@ -125,7 +123,6 @@ def video_stream():
         printing_status = "Печать завершена успешно"
         total_time = total_motion_time
         streaming_active = False  # Останавливаем стриминг
-#        return RedirectResponse(url="/end_print")
 
     def print_error_handler(elapsed_time, last_frame, error_message):
         global printing_status, printing_error, total_time, streaming_active
@@ -136,7 +133,6 @@ def video_stream():
         printing_error = True
         total_time = elapsed_time
         streaming_active = False  # Останавливаем стриминг
-#        return RedirectResponse(url="/end_print")
 
     motion_timer_decorator.set_motion_end_handler(motion_end_handler)
     print_error_detector.set_error_handler(print_error_handler)

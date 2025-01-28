@@ -4,6 +4,10 @@ import base64
 
 def handle_motion_end(total_motion_time, last_frame, print_repo):
 
+    """
+    Синхронная обработка конца печати и запись данных в базу.
+    """
+
     if last_frame is None:
         print("Ошибка: last_frame пустой или None.")
         return

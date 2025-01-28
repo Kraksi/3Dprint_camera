@@ -26,14 +26,14 @@ last_frame = None
 printing_error = False
 error_message = ""
 
-
+# функция для поворторного открытия видеопотока
 def get_videostream():
     return VideoStream(0)
 
 
 videostream = get_videostream()
 
-
+# Подключение к базе
 def get_db():
     db = DatabaseConnection(
         username='krasti',
@@ -51,7 +51,7 @@ def get_user_repo():
     db_session = get_db()
     return UserRepository(db_session)
 
-
+# Получение репозитория с информацией о печати
 def get_print_repo():
     db_session = get_db()
     return PrintInfoRepository(db_session)
@@ -147,8 +147,6 @@ def video_stream():
                     if frame is None:
                         print("Ошибка: кадр не получен.")
                         break
-
-                    print("Кадр получен успешно.")  # Отладочное сообщение
 
                     # Обработка кадра
                     result = print_error_detector.process_frame(frame)

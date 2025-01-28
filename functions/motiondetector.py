@@ -3,6 +3,13 @@ import time
 from observer.observer import Subject
 
 
+'''
+
+класс MotionDetector должен считать время общего движения, игнорируя короткие движения
+
+'''
+
+
 class MotionDetector(Subject):
     def __init__(self, min_area=1000, min_motion_duration=5.0, motion_cooldown=10.0):
         super().__init__()
@@ -39,7 +46,6 @@ class MotionDetector(Subject):
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
                 break  # Если найдено движение, прерываем цикл
 
-        # Логика обработки времени движения
         current_time = time.time()
 
         if motion_detected:

@@ -2,6 +2,12 @@ from observer.observer import Subject
 import cv2
 import numpy as np
 
+'''
+
+Класс FindError использует SIFT алгоритм и поиск контуров для обнаружения ошибок печати
+
+'''
+
 
 class FindError(Subject):
     def __init__(self, error_threshold=0.1):
@@ -60,6 +66,8 @@ class FindError(Subject):
 
         return error_ratio
 
+
+    # Воссатновление обработки
     def resume(self):
         self.paused = False
         self.notify("Обработка возобновлена.")

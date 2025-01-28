@@ -24,7 +24,7 @@ class DatabaseConnection:
 
     def __init__(self, username, password, host, database):
         if not self._initialized:
-            # Изменена строка подключения для использования pymysql
+            # Подключение к mysql с помощью pymysql
             self.database_url = f"mysql+pymysql://{username}:{password}@{host}/{database}"
             self.engine = create_engine(self.database_url, echo=True)
             self.SessionFactory = sessionmaker(bind=self.engine, expire_on_commit=False)
